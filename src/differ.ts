@@ -94,6 +94,12 @@ export function diffEnvironmentMaps(
   } satisfies DiffResult;
 }
 
+function valuesEqual(a: ValueType, b: ValueType): boolean {
+  if (a.kind === "empty" && b.kind === "empty") return true;
+  if (a.kind === "empty" || b.kind === "empty") return false;
+  return a.value === b.value;
+}
+
 function classifyDifference(
   data: KeyComparison,
   compareValues: boolean
@@ -118,13 +124,13 @@ function classifyDifference(
     severity = "warning";
   } else if (hasLeft && hasRight) {
     // Present in both - check types and values
-    const leftType = typeof leftValue;
-    const rightType = typeof rightValue;
-
-    if (leftType !== rightType) {
+    if (leftValue!.kind !== rightValue!.kind) {
       status = "type-mismatch";
       severity = "error";
-    } else if (compareValues && leftValue !== rightValue) {
+    } else if (!compareValues) {
+      status = "unchanged";
+      severity = "info";
+    } else if (!valuesEqual(leftValue!, rightValue!)) {
       status = "modified";
       severity = "warning";
     } else {

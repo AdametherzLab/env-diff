@@ -1,5 +1,3 @@
-import type { BufferEncoding } from "node:buffer";
-
 /**
  * Discriminated union representing the inferred runtime type of an environment variable value.
  * Distinguishes between string literals, numeric values, boolean flags, and empty/undefined states.

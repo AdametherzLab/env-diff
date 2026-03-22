@@ -1,6 +1,6 @@
 {
   "name": "@adametherzlab/env-diff",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Compares your .env files across environments and branches to catch missing or mismatched variables before deployment",
   "type": "module",
   "main": "./dist/index.js",
@@ -13,6 +13,10 @@
       "default": "./dist/index.js"
     },
     "./package.json": "./package.json"
+  },
+  "bin": {
+    "env-diff": "./dist/cli.js",
+    "env-diff-mcp": "./dist/mcp-server.js"
   },
   "files": [
     "dist",
@@ -38,7 +42,16 @@
     "environment-variables",
     "cli",
     "configuration",
-    "developer-tools"
+    "developer-tools",
+    "dotenv",
+    "env",
+    "diff",
+    "mcp",
+    "ai-tools",
+    "ci-cd",
+    "environment-drift",
+    "secrets",
+    "git"
   ],
   "author": {
     "name": "AdametherzLab",
@@ -56,6 +69,9 @@
   "funding": {
     "type": "github",
     "url": "https://github.com/sponsors/AdametherzLab"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "engines": {
     "node": ">=20.0.0"

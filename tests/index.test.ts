@@ -1,97 +1,83 @@
 import { describe, it, expect } from "bun:test";
 import { parseEnvString, diffEnvMaps } from "../src/index.ts";
-// REMOVED: broken import — none of {EnvMap, DiffEntry} exist in index.ts;
+import type { EnvMap, DiffEntry } from "../src/types.ts";
 
 describe("parseEnvString", () => {
-  it("correctly parses quoted values, comments, and empty values", () => {
-    const content = `
-      # Database configuration
-      HOST=localhost
-      PORT="5432"
-      DEBUG='true'
-      EMPTY=
-      # End of config
-    `;
-    
-    const result = parseEnvString(content);
-    
-    expect(result.HOST).toBe("localhost");
-    expect(result.PORT).toBe("5432");
-    expect(result.DEBUG).toBe("true");
-    expect(result.EMPTY).toBe("");
+  it("parses basic key=value pairs with type coercion", () => {
+    const result = parseEnvString("HOST=localhost\nPORT=5432\nDEBUG=true\nEMPTY=");
+    expect(result.HOST).toEqual({ kind: "string", value: "localhost" });
+    expect(result.PORT).toEqual({ kind: "number", value: 5432, raw: "5432" });
+    expect(result.DEBUG).toEqual({ kind: "boolean", value: true, raw: "true" });
+    expect(result.EMPTY).toEqual({ kind: "empty", value: undefined });
+  });
+
+  it("strips quotes from values", () => {
+    const result = parseEnvString('NAME="hello world"\nSINGLE=\'quoted\'');
+    expect(result.NAME).toEqual({ kind: "string", value: "hello world" });
+    expect(result.SINGLE).toEqual({ kind: "string", value: "quoted" });
   });
 
   it("handles multiline double-quoted values", () => {
-    const content = `PRIVATE_KEY="-----BEGIN KEY-----
-ABC123
------END KEY-----"`;
-    
+    const content = 'KEY="line1\nline2\nline3"';
     const result = parseEnvString(content);
-    
-    expect(result.PRIVATE_KEY).toContain("BEGIN KEY");
-    expect(result.PRIVATE_KEY).toContain("\n");
-    expect(result.PRIVATE_KEY).toContain("END KEY");
+    expect(result.KEY.kind).toBe("string");
+    if (result.KEY.kind === "string") {
+      expect(result.KEY.value).toContain("line1");
+      expect(result.KEY.value).toContain("\n");
+    }
+  });
+
+  it("skips comments and blank lines", () => {
+    const content = "# comment\n\nKEY=value\n  # indented comment";
+    const result = parseEnvString(content);
+    expect(Object.keys(result)).toEqual(["KEY"]);
   });
 });
 
 describe("diffEnvMaps", () => {
-  it("detects keys present only in left as removed and only in right as added", () => {
-    const left = {
-      SHARED: "value",
-      ONLY_LEFT: "left-value"
-    } as unknown as EnvMap;
-    
-    const right = {
-      SHARED: "value",
-      ONLY_RIGHT: "right-value"
-    } as unknown as EnvMap;
-    
-    const result = diffEnvMaps(left, right, ".env.example", ".env.production");
-    
-    const removedEntry = result.entries.find((e: DiffEntry) => e.key === "ONLY_LEFT");
-    const addedEntry = result.entries.find((e: DiffEntry) => e.key === "ONLY_RIGHT");
-    
-    expect(removedEntry?.status).toBe("removed");
-    expect(removedEntry?.severity).toBe("error");
-    expect(addedEntry?.status).toBe("added");
-    expect(addedEntry?.severity).toBe("warning");
+  it("detects added, removed, and unchanged keys", () => {
+    const left: EnvMap = {
+      SHARED: { kind: "string", value: "same" },
+      ONLY_LEFT: { kind: "string", value: "left" },
+    };
+    const right: EnvMap = {
+      SHARED: { kind: "string", value: "same" },
+      ONLY_RIGHT: { kind: "string", value: "right" },
+    };
+    const result = diffEnvMaps(left, right, "left", "right");
+
+    const removed = result.entries.find(e => e.key === "ONLY_LEFT");
+    const added = result.entries.find(e => e.key === "ONLY_RIGHT");
+    const unchanged = result.entries.find(e => e.key === "SHARED");
+
+    expect(removed?.status).toBe("removed");
+    expect(removed?.severity).toBe("error");
+    expect(added?.status).toBe("added");
+    expect(added?.severity).toBe("warning");
+    expect(unchanged?.status).toBe("unchanged");
   });
 
-  it("detects type-mismatch when one value is numeric and other is alphabetic", () => {
-    const left = {
-      PORT: 3000
-    } as unknown as EnvMap;
-    
-    const right = {
-      PORT: "three-thousand"
-    } as unknown as EnvMap;
-    
-    const result = diffEnvMaps(left, right, "staging", "production");
-    const portEntry = result.entries.find((e: DiffEntry) => e.key === "PORT");
-    
-    expect(portEntry?.status).toBe("type-mismatch");
-    expect(portEntry?.severity).toBe("error");
+  it("detects type mismatches", () => {
+    const left: EnvMap = { PORT: { kind: "number", value: 3000, raw: "3000" } };
+    const right: EnvMap = { PORT: { kind: "string", value: "three-thousand" } };
+    const result = diffEnvMaps(left, right, "dev", "prod");
+    expect(result.entries[0].status).toBe("type-mismatch");
+    expect(result.entries[0].severity).toBe("error");
   });
 
-  it("respects ignoreKeys option and sets hasErrors based on remaining differences", () => {
-    const left = {
-      SECRET_KEY: "abc123",
-      PUBLIC_KEY: "pub456"
-    } as unknown as EnvMap;
-    
-    const right = {
-      PUBLIC_KEY: "pub456"
-    } as unknown as EnvMap;
-    
-    const resultWithIgnore = diffEnvMaps(left, right, "local", "prod", {
-      ignoreKeys: ["SECRET_KEY"]
-    });
-    
-    const resultWithoutIgnore = diffEnvMaps(left, right, "local", "prod");
-    
-    expect(resultWithIgnore.entries.some((e: DiffEntry) => e.key === "SECRET_KEY")).toBe(false);
-    expect(resultWithoutIgnore.entries.some((e: DiffEntry) => e.key === "SECRET_KEY")).toBe(true);
-    expect(resultWithIgnore.hasErrors).toBe(false);
-    expect(resultWithoutIgnore.hasErrors).toBe(true);
+  it("detects modified values", () => {
+    const left: EnvMap = { URL: { kind: "string", value: "http://dev" } };
+    const right: EnvMap = { URL: { kind: "string", value: "http://prod" } };
+    const result = diffEnvMaps(left, right, "dev", "prod");
+    expect(result.entries[0].status).toBe("modified");
+    expect(result.entries[0].severity).toBe("warning");
+  });
+
+  it("respects ignoreKeys", () => {
+    const left: EnvMap = { SECRET: { kind: "string", value: "abc" } };
+    const right: EnvMap = {};
+    const result = diffEnvMaps(left, right, "l", "r", { ignoreKeys: ["SECRET"] });
+    expect(result.entries.length).toBe(0);
+    expect(result.hasErrors).toBe(false);
   });
 });

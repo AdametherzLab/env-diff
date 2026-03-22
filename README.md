@@ -1,240 +1,315 @@
 [![CI](https://github.com/AdametherzLab/env-diff/actions/workflows/ci.yml/badge.svg)](https://github.com/AdametherzLab/env-diff/actions)
+[![npm](https://img.shields.io/npm/v/@adametherzlab/env-diff)](https://www.npmjs.com/package/@adametherzlab/env-diff)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-blue)](https://www.typescriptlang.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen)]()
 
-# 🔍 env-diff
+# env-diff
 
-## ✨ Features
+> Compare .env files across environments, branches, and runtimes. Catch missing variables, type mismatches, and configuration drift before deployment.
 
-- ✅ **Bidirectional diffing** — detects added, removed, modified, and type-mismatched variables
-- ✅ **Type coercion detection** — catches when `PORT=3000` (number) becomes `PORT="3000"` (string)
-- ✅ **Process environment comparison** — diff `.env.example` against `process.env` to find drift
-- ✅ **CI/CD ready** — strict mode with configurable exit codes for automated gating
-- ✅ **Zero dependencies** — pure TypeScript/Node.js, runs in Bun or Node 20+
+Built by [AdametherzLab](https://github.com/AdametherzLab) with [Claude](https://claude.ai).
 
-## 📦 Installation
+## Why env-diff?
+
+Environment variable mismatches are one of the most common causes of deployment failures. A missing `DATABASE_URL`, a `PORT` that changed from number to string, a secret that exists in development but not production — these bugs are silent until they break production.
+
+**env-diff catches them all.**
+
+## Features
+
+- **Type-aware diffing** — Catches when `PORT=3000` (number) becomes `PORT="3000"` (string)
+- **Git branch comparison** — `env-diff .env:main .env:staging` compares across branches
+- **Secret masking** — Automatically detects and masks API keys, tokens, and passwords
+- **Multi-file matrix** — Compare dev, staging, and prod simultaneously
+- **Codebase scanning** — Auto-generate `.env.example` from your source code
+- **Sync mode** — Generate patches to fix environment drift
+- **Watch mode** — Live drift detection during development
+- **CI/CD ready** — GitHub Action, strict mode, JSON output for automation
+- **MCP server** — Native integration for AI coding agents (Claude Code, Cursor)
+- **Zero dependencies** — Pure TypeScript, runs on Bun or Node.js 20+
+- **Config file** — Persistent settings via `.envdiffrc.json`
+
+## Quick Start
+
+### Installation
 
 ```bash
-npm install @adametherzlab/env-diff
+npm install -g @adametherzlab/env-diff
 # or
-bun add @adametherzlab/env-diff
+bun add -g @adametherzlab/env-diff
+# or use directly
+npx @adametherzlab/env-diff .env.example .env.production
 ```
 
-## 🚀 Quick Start
+### Compare two files
 
-**CLI — compare two files:**
 ```bash
-npx @adametherzlab/env-diff .env.example .env.production --strict
+env-diff .env.example .env.production
 ```
 
-**Programmatic — validate before deployment:**
+### Compare across git branches
+
+```bash
+env-diff .env:main .env:staging
+env-diff .env@abc123 .env@HEAD
+```
+
+### Strict mode for CI
+
+```bash
+env-diff .env.example .env.production --strict
+# Exits with code 1 if errors detected
+```
+
+## CLI Reference
+
+```
+env-diff <left> <right> [options]
+
+Options:
+  --strict           Exit with code 1 if errors detected
+  --ignore <key>     Ignore specific keys (repeatable)
+  --no-value-diff    Only check key existence and types
+  --format <type>    Output: table (default), json, markdown, summary
+  --mask             Mask detected secret values
+  --watch            Re-diff on file changes
+  --sync             Show patch to fix missing keys
+  --sync-write       Apply sync patch to target file
+
+Subcommands:
+  --scan [dir]       Scan codebase for env var references
+  --scan-write [dir] Generate .env.example from scan
+  --matrix <files>   Compare multiple files simultaneously
+  --install-hook     Install pre-commit git hook
+```
+
+## Output Formats
+
+### Table (default)
+```
++──────────────+──────────────+──────────────+───────────────+
+│ Key          │ .env.example │ .env.prod    │ Status        │
++──────────────+──────────────+──────────────+───────────────+
+│ DATABASE_URL │ postgres://… │ (undefined)  │ removed       │
+│ PORT         │ 3000         │ "3000"       │ type-mismatch │
+│ API_KEY      │ (undefined)  │ sk-l****     │ added         │
++──────────────+──────────────+──────────────+───────────────+
+
+✖ Environment check failed with errors
+```
+
+### JSON
+```bash
+env-diff .env.example .env.prod --format json
+```
+
+### Markdown
+```bash
+env-diff .env.example .env.prod --format markdown
+```
+
+## Programmatic API
+
 ```typescript
-// REMOVED external import: import { parseEnvFile, diffEnvMaps } from "@adametherzlab/env-diff";
+import { parseEnvFile, diffEnvMaps, parseProcessEnv } from "@adametherzlab/env-diff";
 
-const example = parseEnvFile(".env.example");
-const current = parseProcessEnv();
+// Compare .env files
+const template = parseEnvFile(".env.example");
+const runtime = parseProcessEnv();
+const result = diffEnvMaps(template, runtime, "Template", "Runtime");
 
-const result = diffEnvMaps(example, current, "Template", "Runtime");
 if (result.hasErrors) {
-  console.error("Environment drift detected!");
+  console.error("Missing required environment variables!");
+  result.entries
+    .filter(e => e.severity === "error")
+    .forEach(e => console.error(`  - ${e.key}: ${e.status}`));
   process.exit(1);
 }
 ```
 
-## 🖥️ CLI Usage
+## Git Branch Comparison
 
-Compare two environment files:
-```bash
-env-diff .env.development .env.production
-```
+Compare .env files across any git ref (branch, tag, commit):
 
 ```bash
-env-diff .env.example --process
+# Compare main vs staging
+env-diff .env:main .env:staging
+
+# Compare current vs specific commit
+env-diff .env@abc123 .env
+
+# PR review: compare base branch vs HEAD
+env-diff .env:origin/main .env:HEAD
 ```
 
-### Flags
+## Secret Masking
 
-| Flag | Description |
-|------|-------------|
-| `--strict` | Exit with code 1 if any errors (missing keys, type mismatches) are detected |
-| `--ignore <keys>` | Comma-separated list of variable names to ignore (e.g., `NODE_ENV,PATH`) |
-| `--no-value-diff` | Only check for key existence and type compatibility, ignore value changes |
-| `--format <type>` | Output format: `table` (default) or `json` |
+env-diff automatically detects sensitive keys and masks their values:
 
-## 📚 API Reference
-
-### `parseEnvString(content: string, options?: ParseOptions): EnvMap`
-
-Parses raw .env content into a typed map with automatic type coercion (numbers, booleans, strings).
-
-**Parameters:**
-- `content` — Raw string content of a .env file
-- `options` — Optional parsing configuration (encoding, variable expansion)
-
-**Returns:** `EnvMap` — Immutable record of variable names to typed values
-
-**Example:**
-```typescript
-const env = parseEnvString("PORT=3000\nDEBUG=true");
-// { PORT: { type: "number", value: 3000 }, DEBUG: { type: "boolean", value: true } }
+```bash
+env-diff .env.example .env.production --mask
+# API_KEY: sk-l**** | SECRET_TOKEN: rea****
 ```
 
-### `parseEnvFile(filePath: string, options?: ParseOptions): EnvMap`
+Default patterns: `*KEY*`, `*SECRET*`, `*TOKEN*`, `*PASSWORD*`, `*CREDENTIAL*`, `*AUTH*`, `*PRIVATE*`
 
-Reads and parses a .env file from disk.
-
-**Parameters:**
-- `filePath` — Absolute or relative path to the .env file
-- `options` — Optional parsing configuration
-
-**Returns:** `EnvMap`
-
-**Throws:** `Error` if file not found or unreadable; `SyntaxError` if strict mode enabled and content malformed
-
-**Example:**
-```typescript
-const prodEnv = parseEnvFile(path.join(process.cwd(), ".env.production"));
-```
-
-### `parseProcessEnv(): EnvMap`
-
-Wraps `process.env` into a typed `EnvMap`, filtering undefined values and coercing types.
-
-**Returns:** `EnvMap` representing the current process environment
-
-**Example:**
-```typescript
-const runtimeEnv = parseProcessEnv();
-```
-
-### `diffEnvMaps(left: EnvMap, right: EnvMap, leftLabel: string, rightLabel: string, options?: DiffOptions): DiffResult`
-
-**Parameters:**
-- `left` — Source environment map (e.g., `.env.example`)
-- `right` — Target environment map (e.g., `.env.production`)
-- `leftLabel` — Display label for the left/source side
-- `rightLabel` — Display label for the right/target side
-- `options` — Comparison configuration (case sensitivity, value comparison)
-
-**Returns:** `DiffResult` — Complete comparison results with severity flags
-
-**Example:**
-```typescript
-const result = diffEnvMaps(
-  { API_KEY: "dev-key", PORT: 3000 },
-  { api_key: "prod-key", PORT: "3000", HOST: "0.0.0.0" },
-  "Development",
-  "Production",
-  { caseSensitive: false, compareValues: true }
-);
-```
-
-### `runCli(argv?: string[]): number`
-
-Execute the env-diff CLI programmatically.
-
-**Parameters:**
-- `argv` — Command line arguments (defaults to `process.argv.slice(2)`)
-
-**Returns:** `number` — Exit code (0 for success, 1 for failure)
-
-**Example:**
-```typescript
-const exitCode = runCli([".env.example", ".env.production", "--strict"]);
-assert.strictEqual(exitCode, 0);
-```
-
-## 🔧 Advanced Usage
-
-Pre-deployment validation in a Node.js script:
-
-```typescript
-// REMOVED external import: import { parseEnvFile, parseProcessEnv, diffEnvMaps } from "@adametherzlab/env-diff";
-import * as path from "path";
-
-function validateEnvironment(): void {
-  const required = parseEnvFile(path.join(process.cwd(), ".env.example"));
-  const current = parseProcessEnv();
-  
-  const diff = diffEnvMaps(
-    required, 
-    current, 
-    "Required (.env.example)", 
-    "Current (process.env)",
-    { compareValues: false } // Only check keys exist and types match
-  );
-
-  const critical = diff.entries.filter(e => e.severity === "error");
-  
-  if (critical.length > 0) {
-    console.error(`❌ Missing ${critical.length} required variables:`);
-    critical.forEach(e => console.error(`   - ${e.key}`));
-    process.exit(1);
-  }
-  
-  console.log("✅ Environment validation passed");
+Configure custom patterns in `.envdiffrc.json`:
+```json
+{
+  "secretPatterns": ["*KEY*", "*SECRET*", "STRIPE_*", "AWS_*"]
 }
-
-validateEnvironment();
 ```
 
-## 📊 Example Output
+## Codebase Scanning
 
-```
-┌─────────────────┬──────────────────┬──────────────────┬──────────────┬──────────┐
-│ Key             │ .env.example     │ .env.production  │ Status       │ Severity │
-├─────────────────┼──────────────────┼──────────────────┼──────────────┼──────────┤
-│ DATABASE_URL    │ "postgres://..." │ undefined        │ removed      │ error    │
-│ API_KEY         │ undefined        │ "sk-live-..."    │ added        │ info     │
-│ PORT            │ 3000             │ "3000"           │ type-mismatch│ error    │
-│ DEBUG           │ true             │ undefined        │ removed      │ warning  │
-│ LOG_LEVEL       │ "debug"          │ "info"           │ modified     │ info     │
-└─────────────────┴──────────────────┴──────────────────┴──────────────┴──────────┘
+Auto-generate `.env.example` from your source code:
+
+```bash
+# Preview what variables your code uses
+env-diff --scan ./src
+
+# Generate .env.example
+env-diff --scan-write ./src
 ```
 
-## 🚨 Status Codes & Severity
+Output:
+```bash
+# Referenced in: src/db.ts, src/config.ts
+DATABASE_URL=
 
-**DiffStatus** values:
-- `added` — Key exists in target but not in source
-- `removed` — Key exists in source but not in target  
-- `modified` — Key exists in both with different values (same type)
-- `unchanged` — Key exists in both with identical values
-- `type-mismatch` — Key exists in both but with incompatible types (e.g., string vs number)
+# Referenced in: src/server.ts
+PORT=3000
+```
 
-**Severity** levels:
-- `error` — Deployment-blocking issues (missing required keys, type mismatches)
-- `warning` — Changes requiring human review (value modifications, removed optional keys)
-- `info` — Non-blocking informational differences (added keys in target)
+## Multi-File Matrix
 
-## 🔄 CI Integration
+Compare all environments simultaneously:
 
-Use `--strict` to fail builds when environment drift is detected.
+```bash
+env-diff --matrix .env.dev .env.staging .env.prod
+```
 
-**GitHub Actions example:**
+## Sync Mode
+
+Fix environment drift automatically:
+
+```bash
+# Preview missing keys
+env-diff .env.example .env.local --sync
+
+# Apply patch
+env-diff .env.example .env.local --sync-write
+```
+
+## Configuration
+
+Create `.envdiffrc.json` in your project root:
+
+```json
+{
+  "ignoreKeys": ["NODE_ENV", "CI", "PATH"],
+  "caseSensitive": true,
+  "strict": true,
+  "format": "table",
+  "secretPatterns": ["*KEY*", "*SECRET*", "*TOKEN*"],
+  "compareValues": true
+}
+```
+
+Or add to `package.json`:
+```json
+{
+  "envdiff": {
+    "ignoreKeys": ["NODE_ENV"],
+    "strict": true
+  }
+}
+```
+
+## CI/CD Integration
+
+### GitHub Actions (Recommended)
+
 ```yaml
-name: Environment Check
-on: [push, pull_request]
-
-jobs:
-  env-check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v1
-      
-      - name: Check environment parity
-        run: |
-          bunx @adametherzlab/env-diff \
-            .env.example \
-            .env.production \
-            --strict \
-            --ignore "NODE_ENV,CI"
+- uses: AdametherzLab/env-diff@v1
+  with:
+    left: '.env.example'
+    right: '.env.production'
+    strict: 'true'
+    ignore: 'NODE_ENV,CI'
+    mask-secrets: 'true'
 ```
 
-## 🤝 Contributing
+### Generic CI
+
+```yaml
+steps:
+  - run: npx @adametherzlab/env-diff .env.example .env.production --strict --mask
+```
+
+### Pre-commit Hook
+
+```bash
+env-diff --install-hook
+```
+
+## AI Agent Integration (MCP)
+
+env-diff includes an MCP (Model Context Protocol) server for AI coding agents:
+
+```bash
+# Add to Claude Code, Cursor, or any MCP-compatible agent
+env-diff-mcp
+```
+
+Available tools:
+- `env_diff_compare` — Compare .env files or content
+- `env_diff_scan` — Scan codebase for env references
+- `env_diff_sync` — Generate sync patches
+
+## Watch Mode
+
+Live drift detection during development:
+
+```bash
+env-diff .env.example .env --watch
+# Re-diffs automatically when either file changes
+```
+
+## API Reference
+
+| Function | Description |
+|----------|-------------|
+| `parseEnvString(content, options?)` | Parse raw .env content into typed EnvMap |
+| `parseEnvFile(filePath, options?)` | Read and parse .env file |
+| `parseProcessEnv()` | Wrap `process.env` into typed EnvMap |
+| `diffEnvMaps(left, right, leftLabel, rightLabel, options?)` | Compare two EnvMaps |
+| `loadGitEnv(source, options?)` | Load .env from git ref |
+| `scanForEnvVars(directory, extensions?)` | Scan code for env references |
+| `syncEnvFiles(source, target, options?)` | Generate sync patch |
+| `compareMatrix(filePaths, options?)` | Multi-file comparison |
+| `watchEnvFiles(left, right, options?)` | Live file watching |
+| `isSecretKey(key, patterns?)` | Check if key is a secret |
+| `maskValue(value)` | Mask a sensitive value |
+| `formatTable(result)` | Format as colored table |
+| `formatJson(result)` | Format as JSON |
+| `formatMarkdown(result)` | Format as markdown table |
+
+## Status & Severity
+
+| Status | Severity | Meaning |
+|--------|----------|---------|
+| `removed` | error | Key missing in target |
+| `type-mismatch` | error | Same key, different types |
+| `added` | warning | New key in target only |
+| `modified` | warning | Same key & type, different value |
+| `unchanged` | info | Identical |
+
+## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md)
 
-## 📄 License
+## License
 
-MIT (c) [AdametherzLab](https://github.com/AdametherzLab)
+MIT (c) [AdametherzLab](https://github.com/AdametherzLab) — Built with [Claude](https://claude.ai)

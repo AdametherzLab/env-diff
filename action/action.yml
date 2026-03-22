@@ -1,0 +1,46 @@
+name: 'env-diff'
+description: 'Compare .env files across environments to detect drift, missing keys, and type mismatches before deployment'
+author: 'AdametherzLab'
+branding:
+  icon: 'shield'
+  color: 'blue'
+
+inputs:
+  left:
+    description: 'Left/source .env file path'
+    required: true
+  right:
+    description: 'Right/target .env file path'
+    required: true
+  strict:
+    description: 'Fail the action if errors are detected'
+    required: false
+    default: 'true'
+  ignore:
+    description: 'Comma-separated list of keys to ignore'
+    required: false
+    default: ''
+  format:
+    description: 'Output format: table, json, markdown, summary'
+    required: false
+    default: 'table'
+  mask-secrets:
+    description: 'Mask detected secret values in output'
+    required: false
+    default: 'true'
+
+outputs:
+  has-errors:
+    description: 'Whether errors were detected'
+  has-warnings:
+    description: 'Whether warnings were detected'
+  added-count:
+    description: 'Number of added keys'
+  removed-count:
+    description: 'Number of removed keys'
+  json-result:
+    description: 'Full diff result as JSON'
+
+runs:
+  using: 'node20'
+  main: 'dist/action.js'
