@@ -1,5 +1,5 @@
 {
-  "name": "@adametherzlab/env-diff",
+  "name": "env-diff",
   "version": "0.2.0",
   "description": "Compares your .env files across environments and branches to catch missing or mismatched variables before deployment",
   "type": "module",
