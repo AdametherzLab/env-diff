@@ -20,7 +20,8 @@ export const DEFAULT_SECRET_PATTERNS: string[] = [
 function globToRegex(pattern: string): RegExp {
   // Escape regex special chars except `*`, then replace `*` with `.*`
   const escaped = pattern.replace(/([.+?^${}()|[\]\\])/g, "\\$1");
-  const regexStr = `^${escaped.replace(/\*/g, ".*")}$`;
+  // Collapse consecutive wildcards to prevent ReDoS with nested quantifiers
+  const regexStr = `^${escaped.replace(/\*+/g, ".*")}$`;
   return new RegExp(regexStr, "i");
 }
 

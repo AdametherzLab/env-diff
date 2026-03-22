@@ -1,4 +1,4 @@
-import { execSync } from "child_process";
+import { execFileSync } from "child_process";
 import { parseEnvString } from "./parser.js";
 import type { EnvMap, ParseOptions } from "./types.js";
 
@@ -7,11 +7,18 @@ import type { EnvMap, ParseOptions } from "./types.js";
  * Returns false for Windows absolute paths like `C:\path` or `D:\file`.
  */
 export function isGitSource(source: string): boolean {
-  // Windows absolute path: single letter followed by `:\`
+  // Windows absolute path: single letter followed by `:\` or `:/`
   if (/^[A-Za-z]:[\\\/]/.test(source)) {
     return false;
   }
-  return source.includes(":") || source.includes("@");
+  // Absolute Unix paths with @ in directory names are NOT git sources
+  if (source.startsWith("/")) {
+    return false;
+  }
+  // Must match pattern: file:ref or file@ref
+  // File part should be a simple relative path (no @), ref should look like a git ref
+  // Git refs: branch names, tags, commit hashes (alphanumeric, dashes, dots, slashes, tildes, carets)
+  return /^[^:@\/][^:@]*[:@][A-Za-z0-9._\-\/~^]+$/.test(source);
 }
 
 /**
@@ -66,7 +73,7 @@ export function loadGitEnv(source: string, options?: ParseOptions): EnvMap {
 
   let stdout: string;
   try {
-    stdout = execSync(`git show ${ref}:${gitPath}`, {
+    stdout = execFileSync("git", ["show", `${ref}:${gitPath}`], {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });

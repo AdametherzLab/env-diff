@@ -58,8 +58,14 @@ export function watchEnvFiles(
       if (onDiff) {
         onDiff(result);
       }
-    } catch {
-      // File may be mid-write or temporarily unavailable; skip this cycle
+    } catch (err: unknown) {
+      // Only silence filesystem errors (file mid-write, temporarily unavailable)
+      // Rethrow programming errors to avoid silent failures
+      if (err instanceof Error && "code" in err) {
+        // Filesystem error — safe to skip this cycle
+      } else {
+        console.error("env-diff watch error:", err);
+      }
     }
   }
 

@@ -14,6 +14,7 @@ export type { SyncResult } from "./sync.js";
 export { compareMatrix, renderMatrixTable } from "./matrix.js";
 export type { MatrixResult } from "./matrix.js";
 export { watchEnvFiles } from "./watcher.js";
+export { installPreCommitHook } from "./hooks.js";
 export { formatTable, formatJson, formatMarkdown, formatSummary, formatValue } from "./formatters.js";
 
 // Types

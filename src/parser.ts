@@ -32,15 +32,14 @@ function coerceValue(raw: string | undefined): ValueType {
  * Only called for double-quoted and unquoted values (not single-quoted).
  */
 function expandVariableRefs(value: string, resolved: Map<string, string>): string {
-  // Replace ${VAR} syntax
-  let result = value.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_, name) => {
-    return resolved.get(name) ?? "";
-  });
-  // Replace $VAR syntax (not followed by {, already handled above)
-  result = result.replace(/\$([A-Za-z_][A-Za-z0-9_]*)/g, (_, name) => {
-    return resolved.get(name) ?? "";
-  });
-  return result;
+  // Single-pass replacement for both ${VAR} and $VAR to avoid double-expansion
+  return value.replace(
+    /\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)/g,
+    (_, braced, bare) => {
+      const name = braced ?? bare;
+      return resolved.get(name) ?? "";
+    }
+  );
 }
 
 /**

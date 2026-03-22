@@ -14,6 +14,7 @@ import { scanForEnvVars, generateEnvExample } from "./scan.js";
 import { syncEnvFiles } from "./sync.js";
 import { compareMatrix, renderMatrixTable } from "./matrix.js";
 import { watchEnvFiles } from "./watcher.js";
+import { installPreCommitHook } from "./hooks.js";
 
 const Colors = {
   reset: "\x1b[0m",
@@ -294,34 +295,14 @@ function handleMatrix(files: string[], format: OutputFormat, options?: DiffOptio
 }
 
 function handleInstallHook(): number {
-  const gitDir = path.resolve(".git");
-  if (!fs.existsSync(gitDir)) {
-    console.error(Colors.red + "Error: Not a git repository (no .git directory found)" + Colors.reset);
+  const { success, message } = installPreCommitHook();
+  if (success) {
+    console.log(Colors.green + message + Colors.reset);
+    return 0;
+  } else {
+    console.error(Colors.red + `Error: ${message}` + Colors.reset);
     return 1;
   }
-
-  const hooksDir = path.join(gitDir, "hooks");
-  if (!fs.existsSync(hooksDir)) {
-    fs.mkdirSync(hooksDir, { recursive: true });
-  }
-
-  const hookPath = path.join(hooksDir, "pre-commit");
-  const hookContent = `#!/bin/sh
-# env-diff pre-commit hook
-# Checks that .env files are in sync before committing
-
-if [ -f .env.example ] && [ -f .env ]; then
-  npx env-diff .env.example .env --strict
-  if [ $? -ne 0 ]; then
-    echo "env-diff: Environment files are out of sync. Fix errors before committing."
-    exit 1
-  fi
-fi
-`;
-
-  fs.writeFileSync(hookPath, hookContent, { mode: 0o755 });
-  console.log(Colors.green + `Pre-commit hook installed at ${hookPath}` + Colors.reset);
-  return 0;
 }
 
 /**

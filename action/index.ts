@@ -146,7 +146,7 @@ function run(): void {
   setOutput("has-warnings", String(result.hasWarnings));
   setOutput("added-count", String(added));
   setOutput("removed-count", String(removed));
-  setOutput("json-result", formatJson(rawResult));
+  setOutput("json-result", formatJson(result));
 
   // Write GitHub step summary (always markdown)
   writeSummary("## env-diff Results\n");

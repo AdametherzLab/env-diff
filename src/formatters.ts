@@ -118,11 +118,13 @@ export function formatMarkdown(result: DiffResult): string {
   lines.push("| Key | Left | Right | Status | Severity |");
   lines.push("|-----|------|-------|--------|----------|");
 
+  const escapePipe = (s: string) => s.replace(/\|/g, "\\|");
+
   for (const entry of result.entries) {
-    const left = formatValue(entry.left);
-    const right = formatValue(entry.right);
+    const left = escapePipe(formatValue(entry.left));
+    const right = escapePipe(formatValue(entry.right));
     lines.push(
-      `| ${entry.key} | ${left} | ${right} | ${entry.status} | ${entry.severity} |`
+      `| ${escapePipe(entry.key)} | ${left} | ${right} | ${entry.status} | ${entry.severity} |`
     );
   }
 

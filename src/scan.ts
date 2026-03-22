@@ -9,10 +9,10 @@ const DEFAULT_EXTENSIONS = [".ts", ".js", ".tsx", ".jsx", ".mjs", ".cjs"];
 
 /** Regex patterns for environment variable references */
 const ENV_PATTERNS: RegExp[] = [
-  /process\.env\.([A-Z_][A-Z0-9_]*)/g,
-  /process\.env\[["']([A-Z_][A-Z0-9_]*)["']\]/g,
-  /Bun\.env\.([A-Z_][A-Z0-9_]*)/g,
-  /import\.meta\.env\.([A-Z_][A-Z0-9_]*)/g,
+  /process\.env\.([A-Za-z_][A-Za-z0-9_]*)/g,
+  /process\.env\[["']([A-Za-z_][A-Za-z0-9_]*)["']\]/g,
+  /Bun\.env\.([A-Za-z_][A-Za-z0-9_]*)/g,
+  /import\.meta\.env\.([A-Za-z_][A-Za-z0-9_]*)/g,
 ];
 
 /**
