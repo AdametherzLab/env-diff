@@ -1,0 +1,25 @@
+# Example GitHub Actions workflow using env-diff
+name: Environment Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - '.env*'
+      - 'config/**'
+
+jobs:
+  env-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check environment parity
+        uses: AdametherzLab/env-diff@v1
+        with:
+          left: '.env.example'
+          right: '.env.production'
+          strict: 'true'
+          ignore: 'NODE_ENV,CI'
+          mask-secrets: 'true'

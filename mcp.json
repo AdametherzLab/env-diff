@@ -1,0 +1,23 @@
+{
+  "name": "env-diff",
+  "version": "0.2.0",
+  "description": "Compare .env files across environments, branches, and runtimes. Detect missing variables, type mismatches, and configuration drift.",
+  "vendor": "AdametherzLab",
+  "homepage": "https://github.com/AdametherzLab/env-diff",
+  "transport": "stdio",
+  "command": "env-diff-mcp",
+  "tools": [
+    {
+      "name": "env_diff_compare",
+      "description": "Compare two .env files or content strings to detect missing, modified, or type-mismatched variables"
+    },
+    {
+      "name": "env_diff_scan",
+      "description": "Scan a codebase directory for environment variable references (process.env, Bun.env, import.meta.env)"
+    },
+    {
+      "name": "env_diff_sync",
+      "description": "Generate a sync patch showing missing variables between a source and target .env file"
+    }
+  ]
+}

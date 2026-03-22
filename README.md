@@ -30,6 +30,23 @@ Environment variable mismatches are one of the most common causes of deployment 
 - **Zero dependencies** — Pure TypeScript, runs on Bun or Node.js 20+
 - **Config file** — Persistent settings via `.envdiffrc.json`
 
+## How env-diff compares
+
+| Feature | env-diff | dotenv-linter | dotenv-diff | dotenvx |
+|---------|:--------:|:-------------:|:-----------:|:-------:|
+| Type-aware diffing | **yes** | no | no | no |
+| Git branch comparison | **yes** | no | no | no |
+| Secret masking | **yes** | no | no | yes |
+| Multi-file matrix | **yes** | no | no | no |
+| Codebase scanning | **yes** | no | no | no |
+| MCP server (AI agents) | **yes** | no | no | no |
+| GitHub Action | **yes** | no | no | no |
+| Watch mode | **yes** | no | no | no |
+| Sync mode | **yes** | no | no | no |
+| Zero dependencies | **yes** | yes | no | no |
+| Config file | **yes** | yes | no | yes |
+| CI/CD strict mode | **yes** | yes | no | yes |
+
 ## Quick Start
 
 ### Installation
@@ -305,6 +322,10 @@ env-diff .env.example .env --watch
 | `added` | warning | New key in target only |
 | `modified` | warning | Same key & type, different value |
 | `unchanged` | info | Identical |
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
 
 ## Contributing
 
